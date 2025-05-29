@@ -1,0 +1,24 @@
+[project]
+name = "bitflux-catcher-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Jared Hulbert", email = "jaredeh@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "polars>=1.29.0",
+    "protobuf>=6.31.0",
+    "pydantic>=2.11.4",
+    "python-dateutil>=2.9.0.post0",
+    "typing-extensions>=4.13.2",
+    "urllib3>=2.4.0",
+]
+
+[project.scripts]
+bitflux-catcher-api = "bitflux_catcher_api:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
