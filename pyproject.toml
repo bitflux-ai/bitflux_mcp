@@ -1,0 +1,29 @@
+[project]
+name = "bitflux_mcp"
+version = "0.0.1"
+requires-python = ">=3.12"
+dependencies = [
+  "downloadstats",
+  "ec2_tools",
+  "machine_lookup",
+  "bitflux_catcher_api",
+  "mcp[cli]>=1.9.0",
+  "boto3>=1.38.18",
+]
+
+[tool.uv]
+workspace.members = [
+  "pkg/downloadstats",
+  "pkg/ec2_tools",
+  "pkg/machine_lookup",
+  "pkg/bitflux_catcher_api",
+]
+
+[project.scripts]
+bitflux_mcp = "main:main"
+
+[tool.uv.sources]
+downloadstats = { workspace = true }
+ec2_tools = { workspace = true }
+machine_lookup = { workspace = true }
+bitflux_catcher_api = { workspace = true }

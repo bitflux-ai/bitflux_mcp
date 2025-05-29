@@ -1,0 +1,17 @@
+[project]
+name = "machine-lookup"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Jared Hulbert", email = "jaredeh@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+machine_lookup = "machine_lookup:manual"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

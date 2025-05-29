@@ -1,0 +1,17 @@
+[project]
+name = "ec2-tools"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Jared Hulbert", email = "jaredeh@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = []
+
+[project.scripts]
+ec2_instances = "ec2_tools.ec2_instances:manual"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
