@@ -1,11 +1,11 @@
 import argparse
-from bitflux_catcher_api import DefaultApi
-from bitflux_catcher_api import Configuration
-from bitflux_catcher_api import ApiClient
-from bitflux_catcher_api import MachineLookupRequest
-from bitflux_catcher_api import downloadstats_pb2
-from ec2_tools import list_ec2_instances
-from ec2_tools import get_aws_account_id
+from ..bitflux_catcher_api import DefaultApi
+from ..bitflux_catcher_api import Configuration
+from ..bitflux_catcher_api import ApiClient
+from ..bitflux_catcher_api import MachineLookupRequest
+from ..bitflux_catcher_api import downloadstats_pb2
+from ..ec2_tools import list_ec2_instances
+from ..ec2_tools import get_aws_account_id
 from google.protobuf import json_format
 from typing import Any, Dict, List
 import hashlib

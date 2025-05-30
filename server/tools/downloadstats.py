@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import Context
 from typing import Any, Dict
-from downloadstats.tool import download_stats_by_machine_key, download_stats_by_instance_id
+from ..downloadstats.tool import download_stats_by_machine_key, download_stats_by_instance_id
 
 base_description='''
     Output format is as follows:

@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import Context
 from typing import Any, Dict
-from ec2_tools.ec2_instances import list_ec2_instances
+from ..ec2_tools.ec2_instances import list_ec2_instances
 
 
 class ListEC2InstancesTool():

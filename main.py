@@ -1,5 +1,3 @@
-import downloadstats
-import ec2_tools
 import server
 
 def main():

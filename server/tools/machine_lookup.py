@@ -1,7 +1,7 @@
 from mcp.server.fastmcp import Context
 from typing import Any, Dict
-from machine_lookup.tool import machine_lookup
-from machine_lookup.tool import lookup_machines_by_region
+from ..machine_lookup.tool import machine_lookup
+from ..machine_lookup.tool import lookup_machines_by_region
 
 class MachineLookupByInstanceIdTool():
     name = 'machine_key_by_instance_id'

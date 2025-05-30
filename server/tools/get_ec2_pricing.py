@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import Context
 from typing import Any, Dict
-from ec2_tools.ec2_pricing import get_ec2_prices
+from ..ec2_tools.ec2_pricing import get_ec2_prices
 
 
 class GetEC2PricingTool():
