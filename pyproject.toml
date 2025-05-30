@@ -11,6 +11,14 @@ dependencies = [
   "boto3>=1.38.18",
 ]
 
+[tool.setuptools]
+py-modules = ["main"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["server*"]
+exclude = ["pkg*"]
+
 [tool.uv]
 workspace.members = [
   "pkg/downloadstats",
