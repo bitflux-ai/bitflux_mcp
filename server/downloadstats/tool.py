@@ -1,10 +1,10 @@
 import argparse
-from bitflux_catcher_api import DefaultApi
-from bitflux_catcher_api import Configuration
-from bitflux_catcher_api import ApiClient
-from bitflux_catcher_api import DownloadStatsRequest
-from machine_lookup import machine_lookup
-from bitflux_catcher_api import downloadstats_pb2
+from ..bitflux_catcher_api import DefaultApi
+from ..bitflux_catcher_api import Configuration
+from ..bitflux_catcher_api import ApiClient
+from ..bitflux_catcher_api import DownloadStatsRequest
+from ..machine_lookup import machine_lookup
+from ..bitflux_catcher_api import downloadstats_pb2
 from google.protobuf import json_format
 from typing import Any, Dict, List
 import polars as pl
