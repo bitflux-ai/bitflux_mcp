@@ -8,7 +8,8 @@ from server.tools.get_ec2_pricing import GetEC2PricingTool
 from server.tools.list_ec2_instances import ListEC2InstancesTool
 from server.tools.downloadstats import DownloadStatsByMachineKeyTool, DownloadStatsByInstanceIdTool
 from server.tools.machine_lookup import MachineLookupByInstanceIdTool, MachineLookupByAccountIdTool, ListMachinesByRegionTool
-
+from server.tools.recommendation import BitfluxRecommendationTool, BitfluxRecommendationPrompt
+from server.ec2_tools import AmiIdTool, get_generic_ami_id, get_bitflux_ami_id
 
 def main():
     """Run the MCP server with CLI argument support."""
@@ -38,6 +39,14 @@ def main():
     async def list_machines_by_region(region: str, ctx: Context) -> Dict[str, Any]:
         return await ListMachinesByRegionTool.execute(region, args.bitflux_url, ctx)
 
+    @mcp.tool(name=BitfluxRecommendationTool.name, description=BitfluxRecommendationTool.description)
+    async def bitflux_recommendation_tool(ctx: Context) -> str:
+        return await BitfluxRecommendationTool.execute(ctx)
+
+    @mcp.tool(name=AmiIdTool.name, description=AmiIdTool.description)
+    async def get_ami_id(target: str, ctx: Context) -> str:
+        return await AmiIdTool.execute(target, ctx)
+
     if args.full:
         @mcp.tool(name=MachineLookupByInstanceIdTool.name, description=MachineLookupByInstanceIdTool.description)
         async def machine_lookup_by_instance_id(instance_id: str, ctx: Context) -> Dict[str, Any]:
@@ -51,15 +60,24 @@ def main():
         async def list_ec2_instances(region: str, ctx: Context) -> Dict[str, Any]:
             return await ListEC2InstancesTool.execute(region, ctx)
 
+        @mcp.resource("bitflux://bitflux_ami_id")
+        async def bitflux_ami_id() -> str:
+            return get_bitflux_ami_id()
+
+        @mcp.resource("bitflux://generic_ami_id")
+        async def generic_ami_id() -> str:
+            return get_generic_ami_id()
+
+        @mcp.prompt(name=BitfluxRecommendationPrompt.name, description=BitfluxRecommendationPrompt.description)
+        async def bitflux_instance_recommendation(stats: str, ec2_instance_type_details: str, ctx: Context) -> str:
+            return await BitfluxRecommendationPrompt.execute(stats, ec2_instance_type_details, ctx)
+
     # Run server with appropriate transport
     if args.sse:
         mcp.settings.port = args.port
         mcp.run(transport='sse')
     else:
         mcp.run()
-
-def hello():
-    print("Hello from mcp_server!")
 
 if __name__ == '__main__':
     main()

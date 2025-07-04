@@ -4,6 +4,7 @@ from ..bitflux_catcher_api import Configuration
 from ..bitflux_catcher_api import ApiClient
 from ..bitflux_catcher_api import DownloadStatsRequest
 from ..machine_lookup import machine_lookup
+from ..ec2_tools import get_ec2_instance_data
 from ..bitflux_catcher_api import downloadstats_pb2
 from google.protobuf import json_format
 from typing import Any, Dict, List
@@ -11,29 +12,79 @@ import polars as pl
 import io
 import math
 
-def transform_data_format(data_list: List[Dict[str, Any]]) -> Dict[str, List[Any]]:
+def strip_warmup(stats: Dict[str, Any], df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Strip warmup period from the beginning of the data based on reclaimable memory stabilization.
+    Uses a simple sliding window approach - remove early samples that bring the average down >10%.
+
+    Args:
+        stats: Dictionary containing metadata including sample_rate
+        df: DataFrame containing the scaled data with 'reclaimable' column
+
+    Returns:
+        DataFrame with warmup period removed
+    """
+    if df.is_empty():
+        return df
+
+    sample_rate = int(stats['sampleRate'])
+    total_samples = len(df)
+    total_time_seconds = total_samples * sample_rate
+
+    # Calculate maximum strip constraints
+    max_strip_time_seconds = min(3600, total_time_seconds * 3 // 10)  # 1 hour or 30%
+    max_strip_samples = int(max_strip_time_seconds / sample_rate)
+
+    # Get reclaimable values as a list for easier processing
+    reclaimable = df['reclaimable']
+
+    strip_count = max_strip_samples
+    last_mean = reclaimable.mean()
+
+    for i in range(max_strip_samples+1):
+        strip_count = max_strip_samples - i
+        testcol = reclaimable[strip_count:]
+        testmean = testcol.mean()
+        testdelta = testmean - last_mean
+        threshold = testmean * 0.1
+
+        if testdelta > threshold:
+            # if we have less three samples left, we can't strip this much
+            # otherwise we can call it quits
+            if (total_samples - strip_count) >= 3:
+                break
+        last_mean = testmean
+
+    return df.slice(strip_count, total_samples - strip_count)
+
+def transform_data_format(scaled_df: pl.DataFrame) -> Dict[str, List[Any]]:
     """
     Transform data from a list of dictionaries to a dictionary of lists.
-    
+
     Args:
-        data_list: List of dictionaries where each dictionary represents a data point
-        
+        scaled_df: Polars DataFrame containing the scaled data
+
     Returns:
         Dictionary where keys are column names and values are lists of data points
     """
+
+    # Get the last 25 rows of the scaled DataFrame
+    num_rows = min(25, scaled_df.shape[0])
+    data_list = scaled_df.tail(num_rows).to_dicts()
+
     if not data_list:
         return {}
-    
+
     result = {}
     # Initialize the result dictionary with empty lists for each key
     for key in data_list[0].keys():
         result[key] = []
-    
+
     # Populate the lists
     for data_point in data_list:
         for key, value in data_point.items():
             result[key].append(value)
-            
+
     return result
 
 def scale_bitflux_data(stats: Dict[str, Any], df: pl.DataFrame) -> pl.DataFrame:
@@ -90,19 +141,32 @@ def scale_bitflux_data(stats: Dict[str, Any], df: pl.DataFrame) -> pl.DataFrame:
         col: scaled_cols[i] for i, col in enumerate(df_reordered.columns)
     })
 
-    # if the first row has reclaimable as 0, drop it
-    if scaled_df.shape[0] > 0 and scaled_df.get_column('reclaimable').first() == 0:
-        scaled_df = scaled_df.slice(1, scaled_df.shape[0] - 1)
+    # Add calculated 'used' memory column
+    mem_total = int(stats['system']['memTotal'])
+    scaled_df = scaled_df.with_columns([
+        (mem_total - pl.col('free') - pl.col('reclaimable')).alias('used')
+    ])
 
     return scaled_df
 
-def summarize_bitflux_data(df: pl.DataFrame) -> Dict[str, Any]:
+def format_bytes(bytes_value):
+    """Convert bytes to human readable format (GiB, MiB, KiB, B)"""
+    if bytes_value >= 1024**3:  # GiB
+        return f"{bytes_value / (1024**3):.0f} GiB"
+    elif bytes_value >= 1024**2:  # MiB
+        return f"{bytes_value / (1024**2):.0f} MiB"
+    elif bytes_value >= 1024:  # KiB
+        return f"{bytes_value / 1024:.0f} KiB"
+    else:  # Bytes
+        return f"{bytes_value} B"
+
+def summarize_bitflux_data(stats: Dict[str,Any], df: pl.DataFrame) -> Dict[str, Any]:
     """
     Summarize bitflux data into a structured dictionary with statistical metrics.
-    
+
     Args:
         df: DataFrame containing the bitflux data
-        
+
     Returns:
         Dictionary with statistical summaries for each column
     """
@@ -162,7 +226,12 @@ def summarize_bitflux_data(df: pl.DataFrame) -> Dict[str, Any]:
         if col not in ['idle_cpu']:  # Add other columns to exclude if needed
             summary[col]['sum'] = float(df[col].sum())
 
-    return summary
+    requirements = {}
+    requirements['used_memory'] = format_bytes(summary['used']['median'])
+    cpu_usage = 100.0 - float(summary['idle_cpu']['90%'])
+    cpu_usage = cpu_usage / 100.0
+    requirements['vcpu_usage'] = cpu_usage * int(stats['system']['numCpus'])
+    return summary, requirements
 
 def download_stats_by_machine_key(machine_key: str, url: str) -> Dict[str, Any]:
     # Initialize API client
@@ -176,8 +245,7 @@ def download_stats_by_machine_key(machine_key: str, url: str) -> Dict[str, Any]:
             # Call the API
             response = api_instance.download_stats(download_stats_request=body)
         except Exception as e:
-            print(f"Error calling download_stats: {e}")
-            return {}
+            raise Exception(f"Error calling download_stats: {e}")
 
         # Parse Protobuf response
         statspb = downloadstats_pb2.Stats()
@@ -193,38 +261,45 @@ def download_stats_by_machine_key(machine_key: str, url: str) -> Dict[str, Any]:
         try:
             df = pl.read_parquet(io.BytesIO(bitfluxstats))
         except Exception as e:
-            print(f"Failed to read Parquet: {e}")
-            return {}
+            raise Exception(f"Failed to read Parquet: {e}")
 
-        scaled_df = scale_bitflux_data(stats,df)
+        # print(stats)
+        scaled_df = scale_bitflux_data(stats, df)
+
+        # Strip warmup period
+        scaled_df = strip_warmup(stats, scaled_df)
 
         output = {}
         output['timestamp'] = stats['timestamp']
         output['sample_rate'] = stats['sampleRate']
         output['mem_total'] = stats['system']['memTotal']
-        output['swap_total'] = stats['system']['swapTotal']
+        output['swap_total'] = stats['system'].get('swapTotal', 0)
         output['num_cpus'] = stats['system']['numCpus']
-
-        # Alternative implementation with safety check
-        num_rows = min(25, scaled_df.shape[0])
-        data_dicts = scaled_df.tail(num_rows).to_dicts()
+        output['instance_type'] = ""
 
         # Transform data from list of dicts to dict of lists
-        output['data'] = transform_data_format(data_dicts)
+        output['data'] = transform_data_format(scaled_df)
 
-        output['summary'] = summarize_bitflux_data(scaled_df)
+        summary, requirements = summarize_bitflux_data(stats, scaled_df)
+        output['summary'] = summary
+        output['summary_requirements'] = requirements
         #print(json.dumps(output, indent=4, default=str))
         return output
 
 def download_stats_by_instance_id(instance_id: str, url: str) -> Dict[str, Any]:
     """Download stats from bitflux daemon by instance id"""
-    result = machine_lookup(instance_id, "", url)
-    machines = []
-    for machine in result:
-        machines.append(machine['machineKey'])
-    if len(machines) == 0:
+    results = machine_lookup(instance_id, "", url)
+    if len(results) == 0:
         raise Exception(f"No machines found for instance_id {instance_id}")
-    stats = download_stats_by_machine_key(machines[0], url)
+    machine = results[0]
+    machine_key = machine.get('machineKey', None)
+    if machine_key is None:
+        raise Exception(f"No machine key found for instance_id {instance_id} {results}")
+    instance_type = get_ec2_instance_data(instance_id)['InstanceType']
+    if instance_type is None:
+        raise Exception(f"No instance type found for instance_id {instance_id} {results}")
+    stats = download_stats_by_machine_key(machine_key, url)
+    stats['instance_type'] = instance_type
     return stats
 
 def manual() -> None:
@@ -244,6 +319,8 @@ def manual() -> None:
         print(json.dumps(stats, indent=4))
     else:
         print("Please provide either machine_key or instance_id")
+        parser.print_help()
+        return
 
 if __name__ == "__main__":
     manual()
