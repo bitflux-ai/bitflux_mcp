@@ -20,8 +20,21 @@ base_description='''
         // Number of logical CPU cores
         "num_cpus": "16",
 
+        // The instance type used to collect the stats
+        "instance_type": "m6i.2xlarge",
+
+        // Calculated Requirements
+        "summary_requirements": {
+          // The calculated amount of memory the workload used
+          "used_memory": "500 MiB",
+          // The calculated number of vCPUs the workload used
+          "vcpu_usage": "1.7"
+        },
+
         // A small sample of raw measurements at successive intervals
         "data": {
+            // BitFlux calculated used memory
+            "used": [16188846080, 16121737216, 16239177728],
             // Bytes of unused RAM at this sample
             "free": [17377001472, 17444110336, 17326669824],
             // Bytes used by page cache/slab reclaimable
@@ -69,24 +82,7 @@ base_description='''
         }
       }
 
-    A user will likely want to see a graphs of the memory and cpus over time. You can use the timestamp field as the time of the last sample, with the sample_rate being the time between samples.
-
-    The goal is to see if we can save money with a smaller instance.  The job of this tool is to provide a 
-    summary of the data that can be used to make that decision.
-
-    Example:
-      Suppose a system presents the following stats:
-        "mem_total" = 64GB
-        "num_cpus": "8",
-        max "mem_free": 2GB,
-        max "reclaimable": 40GB,
-        min "idle_cpu": 91
-      This system using bitflux would have adjusted free memory 2GB + 40GB = 42GB.  Meaning the "used" memory is 64GB - 42GB = 22GB.
-      and the used CPU is 100 - 91 = 9%  or 0.09 * 8 = 0.72 cores.  So this workload would probably fit in an instance with 32GB of total RAM and as few as 2 cores.  Therefore we can recommend a smaller cheaper bitflux enabled instance that can statisfy these parameters
-
-      If however "reclaimable" was only 4GB or idle_cpu was min of 20% then we would not recommend using a smaller instance.
-
-    NOTE: You might be trained to consider swap usage as a sign that we need more memory, however so long as the adjusted free memory remains above 10% of total memory, disregard swap usage as a potential problem for the purpose of sizing EC2 instances.
+    A user may want to see graphs and/or charts of the memory and cpus over time. You can use the timestamp field as the time of the last sample, with the sample_rate being the time between samples.
     '''
 
 class DownloadStatsByMachineKeyTool():

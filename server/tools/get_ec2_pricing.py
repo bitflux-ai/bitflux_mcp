@@ -1,6 +1,6 @@
 from mcp.server.fastmcp import Context
 from typing import Any, Dict
-from ..ec2_tools.ec2_pricing import get_ec2_prices
+from ..ec2_tools.ec2_pricing import get_ec2_prices_simple
 
 
 class GetEC2PricingTool():
@@ -52,7 +52,7 @@ class GetEC2PricingTool():
         """Retrieve pricing information and parameters for the specified EC2 instance type and region."""
         try:
             # Use the ec2_pricing module to fetch raw pricing entries
-            prices = get_ec2_prices(region, instance_type)
+            prices = get_ec2_prices_simple(region, instance_type)
             return {
                 'status': 'success',
                 'region': region,

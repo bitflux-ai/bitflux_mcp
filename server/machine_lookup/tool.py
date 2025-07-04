@@ -57,7 +57,7 @@ def lookup_machines_by_region(region: str, url: str) -> Dict[str, Any]:
 
 def manual() -> None:
     import json
-    parser = argparse.ArgumentParser(description="Bitflux DownloadStats CLI")
+    parser = argparse.ArgumentParser(description="Bitflux machine lookup CLI")
     parser.add_argument("--account_id", default="", help="Account ID (e.g., 1234567890)")
     parser.add_argument("--instance_id", default="", help="Instance ID (e.g., i-1234567890)")
     parser.add_argument("--region", default="", help="AWS region (e.g., us-east-1)")
@@ -70,6 +70,7 @@ def manual() -> None:
         return
     elif args.instance_id == "" and args.account_id == "":
         print("Please provide either instance_id or account_id")
+        parser.print_help()
         return
     machines = machine_lookup(args.instance_id, args.account_id, args.url)
     print(json.dumps(machines, indent=4))

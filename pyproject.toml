@@ -18,6 +18,10 @@ dependencies = [
   "boto3>=1.38.18",
 ]
 
+dev-dependencies = [
+  "pytest>=8.4.0"
+]
+
 [project.scripts]
 bitflux_mcp = "server:main"
 

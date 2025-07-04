@@ -4,7 +4,7 @@ Module to list EC2 instances by instance ID in a given AWS region.
 """
 import boto3
 import json
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 
 def list_ec2_instances(region_name: str) -> Dict[str, List[str]]:
@@ -35,18 +35,20 @@ def list_ec2_instances(region_name: str) -> Dict[str, List[str]]:
                 instances["State"].append(instance.get('State', {}).get('Name', 'unknown'))
     return instances
 
+# get ec2 Instance data from
+def get_ec2_instance_data(instance_id: str) -> Dict[str, str]:
+    ec2 = boto3.client('ec2')
+    response = ec2.describe_instances(InstanceIds=[instance_id])
+    instances = response['Reservations'][0]['Instances'][0]
+    return instances
+
 def manual() -> None:
     import argparse
 
-    parser = argparse.ArgumentParser(
-        description='List EC2 instance IDs in a region.'
-    )
-    parser.add_argument(
-        '--region',
-        required=True,
-        help='AWS region code (e.g., us-east-1)'
-    )
+    parser = argparse.ArgumentParser(description='List EC2 instance IDs in a region.')
+    parser.add_argument('--region', default="us-east-1", help='AWS region code (e.g., us-east-1)')
     args = parser.parse_args()
+
     instances = list_ec2_instances(args.region)
     print(json.dumps(instances, indent=2, default=str))
 

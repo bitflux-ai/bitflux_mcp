@@ -218,16 +218,36 @@ def get_ec2_prices(region_name, instance_type):
     # No wildcard: exact match enforcement
     return [p for p in results if p.get('instanceType') == instance_type]
 
+def get_ec2_prices_simple(region_name, instance_type):
+    prices = get_ec2_prices(region_name, instance_type)
+    output = {"instanceType": [], "memory": [], "vcpu": [], "pricePerHour": []}
+    for p in prices:
+        output["instanceType"].append(p["instanceType"])
+        output["pricePerHour"].append(p["pricePerUnit"])
+        output["memory"].append(p["memory"])
+        output["vcpu"].append(p["vcpu"])
+    return output
 
-# if run as a script, print the results and write a file
-if __name__ == '__main__':
+def manual():
     import polars as pl
+    import argparse
 
-    prices = get_ec2_prices('us-east-1', 't3.*')
+    parser = argparse.ArgumentParser(description='Get EC2 pricing for an instance type.')
+    parser.add_argument('--region', default="us-east-1", help='AWS region code (e.g., us-east-1)')
+    parser.add_argument('--instance_type', default="t3.*", help='AWS region code (e.g., us-east-1)')
+    parser.add_argument('--simple', action='store_true', help='Get simple pricing')
+
+    args = parser.parse_args()
+    if args.simple:
+        prices = get_ec2_prices_simple(args.region, args.instance_type)
+        print(json.dumps(prices, indent=2))
+    else:
+        prices = get_ec2_prices(args.region, args.instance_type)
+        print(json.dumps(prices[0], indent=2))
+        for p in prices:
+            print(f"{p['instanceType']}: {p['pricePerUnit']}")
 
     #print(prices)
-    for p in prices:
-        print(f"{p['instanceType']}: {p['pricePerUnit']}")
         #print(p)
     df = pl.DataFrame(prices)
     print(df)
@@ -238,6 +258,5 @@ if __name__ == '__main__':
     # save to parquet
     df.write_parquet('prices.parquet')
 
-    print(len(get_ec2_prices('us-east-1', '*')))
-    print(len(get_ec2_prices('us-east-1', 't3.*')))
-    print(len(get_ec2_prices('us-east-1', 't3.micro')))
+if __name__ == '__main__':
+    manual()
