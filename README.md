@@ -79,8 +79,9 @@ Edit ~/.config/amp/settings.json to include the following:
   }
 }
 ```
-
-
+### Developing MCP Locally
+If you want to run the MCP from the local repo without installing it, you can use the following configuration:
+```json
 {
   "mcpServers": {
     "bitflux_mcp": {
@@ -88,7 +89,7 @@ Edit ~/.config/amp/settings.json to include the following:
       "args": [
         "run",
         "--directory",
-        "/home/jared/repos/bitflux-ai/bitflux2_mr/apps/mcp/bitflux_mcp",
+        "/home/user/repos/bitflux_mcp",
         "python",
         "-m",
         "main.py"
@@ -98,6 +99,7 @@ Edit ~/.config/amp/settings.json to include the following:
     }
   }
 }
+```
 
 # Usage
 
